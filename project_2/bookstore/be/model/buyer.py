@@ -73,20 +73,19 @@ class Buyer(db_conn.DBConn):
 
     def payment(self, user_id: str, password: str, order_id: str) -> (int, str):
         conn = self.conn
-        self.cursor = self.conn.cursor()
+        self.cursor = conn.cursor()
         try:
             # self.cursor.execute("USE DBMS;")
             self.cursor.execute(
-                "SELECT order_id, user_id, store_id FROM new_order WHERE order_id = %s;",
-                (order_id,)
+                "SELECT user_id, store_id FROM new_order WHERE order_id = %s AND status = %s;",
+                (order_id, 0)
             )
             row = self.cursor.fetchone()
             if row is None:
                 return error.error_invalid_order_id(order_id)
 
-            order_id = row[0]
-            buyer_id = row[1]
-            store_id = row[2]
+            buyer_id = row[0]
+            store_id = row[1]
 
             if buyer_id != user_id:
                 return error.error_authorization_fail()
@@ -115,46 +114,37 @@ class Buyer(db_conn.DBConn):
                 return error.error_non_exist_user_id(seller_id)
 
             self.cursor.execute(
-                "SELECT book_id, count, price FROM new_order_detail WHERE order_id = %s;",
+                "SELECT count, price FROM orders WHERE order_id = %s;",
                 (order_id,)
             )
             total_price = 0
-            results = self.cursor.fetchall()
-            for row in results:
-                count = row[1]
-                price = row[2]
+            # results = self.cursor.fetchall()
+            for row in self.cursor:
+                count = row[0]
+                price = row[1]
                 total_price = total_price + price * count
 
             if balance < total_price:
                 return error.error_not_sufficient_funds(order_id)
 
             self.cursor.execute(
-                "UPDATE user set balance = balance - %s"
-                "WHERE user_id = %s AND balance >= %s;",
+                "UPDATE user set balance = balance - %s WHERE user_id = %s AND balance >= %s;",
                 (total_price, buyer_id, total_price)
             )
             if self.cursor.rowcount == 0:
                 return error.error_not_sufficient_funds(order_id)
 
             self.cursor.execute(
-                "UPDATE user set balance = balance + %s" "WHERE user_id = %s;",
-                (total_price, buyer_id)
+                "UPDATE user set balance = balance + %s WHERE user_id = %s;",
+                (total_price, seller_id)
             )
 
             if self.cursor.rowcount == 0:
                 return error.error_non_exist_user_id(buyer_id)
 
             self.cursor.execute(
-                "DELETE FROM new_order WHERE order_id = %s;", (order_id,)
+                "UPDATE new_order SET status = %s where order_id = %s;", (1, order_id)
             )
-            if self.cursor.rowcount == 0:
-                return error.error_invalid_order_id(order_id)
-
-            self.cursor.execute(
-                "DELETE FROM new_order_detail where order_id = %s;", (order_id,)
-            )
-            if self.cursor.rowcount == 0:
-                return error.error_invalid_order_id(order_id)
 
             conn.commit()
 
