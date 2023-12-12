@@ -89,3 +89,34 @@ class Seller(db_conn.DBConn):
         except BaseException as e:
             return 530, "{}".format(str(e))
         return 200, "ok"
+    
+    # 发货操作
+    def deliver_order(self, order_id: str) -> (int, str):
+        try:
+            self.cursor = self.conn.cursor()
+            self.cursor.execute("SELECT status FROM new_order where order_id = %s and status < 3;",
+                                (order_id, ))
+            row = self.cursor.fetchone()
+
+            if row is None:
+                return error.error_invalid_order_id(order_id)
+            
+            status = row[0]
+
+            if status == -1:
+                return error.error_invalid_order_id(order_id)
+            elif status == 0:
+                return error.error_order_not_paid(order_id)
+            elif status == 2:
+                return error.error_order_delivered(order_id)
+            
+            self.cursor.execute("UPDATE new_order set status = %s where order_id = %s;",
+                                (2, order_id))
+            self.conn.commit()
+        except pymysql.Error as e:
+            return 528, "{}".format(str(e))
+        except BaseException as e:
+            return 530, "{}".format(str(e))
+        return 200, "ok"
+        
+

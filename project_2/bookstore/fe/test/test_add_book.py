@@ -1,6 +1,5 @@
 import pytest
 
-from fe import conf
 from fe.access.new_seller import register_new_seller
 from fe.access import book
 import uuid
@@ -17,7 +16,7 @@ class TestAddBook:
 
         code = self.seller.create_store(self.store_id)
         assert code == 200
-        book_db = book.BookDB(conf.Use_Large_DB)
+        book_db = book.BookDB()
         self.books = book_db.get_book_info(0, 2)
 
         yield

@@ -1,6 +1,4 @@
 import random
-
-from fe import conf
 from fe.access import book
 from fe.access.new_seller import register_new_seller
 
@@ -24,7 +22,7 @@ class GenBook:
     ) -> (bool, []):
         self.__init_book_list__()
         ok = True
-        book_db = book.BookDB(conf.Use_Large_DB)
+        book_db = book.BookDB()
         rows = book_db.get_book_count()
         start = 0
         if rows > max_book_count:
@@ -59,3 +57,27 @@ class GenBook:
         for item in self.buy_book_info_list:
             self.buy_book_id_list.append((item[0].id, item[1]))
         return ok, self.buy_book_id_list
+    
+
+    def gen_book_info(self) -> (bool, str, str):
+        self.__init_book_list__()
+        ok = True
+        book_db = book.BookDB()
+        rows = book_db.get_book_count()
+        book_id = random.randint(1, rows)
+        book_info = book_db.get_book_info(book_id, 1)[0]
+        # methods = ["title", "author", "content", "book_intro", "tags"]
+        methods = ["title", "author", "book_intro", "tags"]
+        method = random.choice(methods)
+        if method == "title":
+            info = book_info.title
+        elif method == 'author':
+            info = book_info.author
+        # elif method == 'content':
+        #     info = book_info.content
+        elif method == 'book_intro':
+            info = book_info.book_intro
+        elif method == 'tags':
+            info = book_info.tags
+                        
+        return ok, method, info

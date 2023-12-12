@@ -161,7 +161,7 @@ class Buyer(db_conn.DBConn):
             self.cursor = self.conn.cursor()
             # self.cursor.execute("USE DBMS;")
             self.cursor.execute(
-                "SELECT password  from user where user_id=%s;", (user_id,)
+                "SELECT password from user where user_id=%s;", (user_id,)
             )
             row = self.cursor.fetchone()
             if row is None:
@@ -177,6 +177,127 @@ class Buyer(db_conn.DBConn):
             if self.cursor.rowcount == 0:
                 return error.error_non_exist_user_id(user_id)
             self.conn.commit()
+        except pymysql.Error as e:
+            return 528, "{}".format(str(e))
+        except BaseException as e:
+            return 530, "{}".format(str(e))
+
+        return 200, "ok"
+
+    # 确认收货操作
+    def receive_order(self, user_id, password, order_id) -> (int, str):
+        try: 
+            self.cursor = self.conn.cursor()
+            self.cursor.execute(
+                "SELECT password from user where user_id=%s;", (user_id,)
+            )
+            row = self.cursor.fetchone()
+            if row is None:
+                return error.error_authorization_fail()
+
+            if row[0] != password:
+                return error.error_authorization_fail()
+            
+            self.cursor.execute(
+                "SELECT user_id, status from new_order where order_id = %s;", (order_id, )
+            )
+            row = self.cursor.fetchone()
+            if row is None:
+                return error.error_invalid_order_id(order_id)
+            
+            status = row[1]
+
+            if status == -1:
+                return error.error_invalid_order_id(order_id)
+            elif status == 0:
+                return error.error_order_not_paid(order_id)
+            elif status == 1:
+                return error.error_order_not_delivered(order_id)
+            
+            self.cursor.execute("UPDATE new_order SET status = %s where order_id = %s;",
+                                (3, order_id))
+            self.conn.commit()
+        except pymysql.Error as e:
+            return 528, "{}".format(str(e))
+        except BaseException as e:
+            return 530, "{}".format(str(e))
+
+        return 200, "ok"
+
+    # 搜索图书
+    def search_book(self, keywords, method: str = 'title', store_id: str = None) -> (int, str):
+        available_method = ['title', 'tags', 'author', 'book_intro']
+        if method not in available_method:
+            return error.error_invalid_search_method(method)
+        
+        if store_id is not None and not self.store_id_exist(store_id):
+            return error.error_non_exist_store_id
+        
+        # like是模糊查找
+        search = "SELECT book_id FROM store where %s like %s;"
+        if store_id is not None:
+            search = "SELECT book_id FROM store where %s like %s AND store_id = %s;"
+        
+        try:
+            self.cursor = self.conn.cursor()
+            if store_id is not None:
+                self.cursor.execute(search, (method, keywords, store_id))
+            else:
+                self.cursor.execute(search, (method, keywords))
+        except pymysql.Error as e:
+            return 528, "{}".format(str(e))
+        except BaseException as e:
+            return 530, "{}".format(str(e))
+
+        return 200, "ok"
+
+    # 搜索订单
+    def search_order(self, user_id: str, password: str) -> (int, str):
+        try:
+            self.cursor = self.conn.cursor()
+            self.cursor.execute("SELECT password FROM user where user_id = %s;", (user_id, ))
+            row = self.cursor.fetchone()
+
+            if row is None:
+                return error.error_non_exist_user_id(user_id)
+
+            if not password == row[0]:
+                return error.error_authorization_fail()
+
+            self.cursor.execute("SELECT * FROM new_order LEFT JOIN orders ON new_order.order_id = orders.order_id "
+                                "WHERE new_order.user_id = %s;", (user_id, ))
+        except pymysql.Error as e:
+            return 528, "{}".format(str(e))
+        except BaseException as e:
+            return 530, "{}".format(str(e))
+
+        return 200, "ok"
+
+    # 取消订单
+    def cancel_order(self, user_id, password, order_id) -> (int, str):
+        try:
+            self.cursor = self.conn.cursor()
+            self.cursor.execute("SELECT password FROM user WHERE user_id = %s;", (user_id, ))
+            row = self.cursor.fetchone()
+
+            if row is None:
+                return error.error_non_exist_user_id(user_id)
+
+            if not password == row[0]:
+                return error.error_authorization_fail()
+
+            self.cursor.execute("SELECT user_id, status, store_id FROM new_order WHERE order_id = %s;", (order_id, ))
+            row = self.cursor.fetchone()
+            if row is None:
+                return error.error_invalid_order_id(order_id)
+
+            status = row[1]
+            store_id = row[2]
+
+            if status == -1:
+                return error.error_invalid_order_id(order_id)
+            elif status == 2:
+                return error.error
         except pymysql.Error as e:
             return 528, "{}".format(str(e))
         except BaseException as e:
