@@ -297,7 +297,11 @@ class Buyer(db_conn.DBConn):
             if status == -1:
                 return error.error_invalid_order_id(order_id)
             elif status == 2:
-                return error.error
+                return error.error_order_delivered(order_id)
+            elif status == 3:
+                return error.error_order_was_received(order_id)
+            
+            self.cursor.execute()
         except pymysql.Error as e:
             return 528, "{}".format(str(e))
         except BaseException as e:
