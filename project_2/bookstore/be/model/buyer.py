@@ -301,7 +301,28 @@ class Buyer(db_conn.DBConn):
             elif status == 3:
                 return error.error_order_was_received(order_id)
             
-            self.cursor.execute()
+            self.cursor.execute("SELECT book_id, count, price FROM orders WHERE order_id = %s;", (order_id, ))
+            book_info = []
+            row = self.cursor.fetchall()
+            for each in row:
+                temp = {"book_id": each[0], "count": each[1], "price": each[2]}
+                book_info.append(temp)
+            
+            self.cursor.execute("SELECT user_id FROM user_store WHERE store_id = %s;", (store_id, ))
+            row = self.cursor.fetchone()
+            seller_id = row[0]
+
+            self.cursor.execute("UPDATE new_order SET status = %s WHERE order_id = %s;", (-1, order_id))
+            
+            total_price = 0
+            for each in book_info:
+                self.cursor.execute("UPDATE store SET stock_level = stock_level + %s WHERE store_id = %s AND book_id = %s", (each["count"], store_id, each["book_id"]))
+                total_price = total_price + each["count"] * each["price"]
+            
+            self.cursor.execute("UPDATE user SET balance = balance + %s WHERE user_id = %s;", (total_price, user_id))
+            self.cursor.execute("UPDATE user SET balance = balance + %s WHERE user_id = %s;", (-total_price, seller_id))
+
+            self.conn.commit()
         except pymysql.Error as e:
             return 528, "{}".format(str(e))
         except BaseException as e:
