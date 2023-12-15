@@ -7,6 +7,8 @@ import pymysql
 import schedule
 import threading
 
+start_time = time.time()
+
 class Store:
     database: str
 
@@ -78,7 +80,7 @@ class Store:
             schedule.every(1).second.do(update_data)
 
             def run_schedule():
-                while True:
+                while time.time() - start_time < 180:
                     schedule.run_pending()
                     time.sleep(1)
 
