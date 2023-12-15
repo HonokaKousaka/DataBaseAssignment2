@@ -67,7 +67,7 @@ class TestCancelOrder:
         assert code == 200
         code = self.buyer.payment(self.order_id)
         assert code == 200
-        code = self.seller.deliver_order(self.store_id, self.order_id)
+        code = self.seller.deliver_order(self.order_id)
         assert code == 200
         code = self.buyer.cancel_order(self.order_id)
         assert code != 200
