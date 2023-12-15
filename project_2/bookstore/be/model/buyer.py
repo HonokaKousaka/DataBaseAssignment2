@@ -225,7 +225,8 @@ class Buyer(db_conn.DBConn):
         return 200, "ok"
 
     # 搜索图书
-    def search_book(self, keywords, method: str = 'title', store_id: str = None) -> (int, str):
+    def search_book(self, keywords, method: str = 'title', store_id: str = None, page_number: int = 1) -> (int, str):
+        PAGE_SIZE = 20
         available_method = ['title', 'tags', 'author', 'book_intro']
         if method not in available_method:
             return error.error_invalid_search_method(method)
@@ -233,17 +234,19 @@ class Buyer(db_conn.DBConn):
         if store_id is not None and not self.store_id_exist(store_id):
             return error.error_non_exist_store_id
         
+        offset = (page_number - 1) * PAGE_SIZE
+
         # like是模糊查找
-        search = "SELECT book_id FROM store where %s like %s;"
+        search = "SELECT book_id FROM store where %s like %s LIMIT %s OFFSET %s;"
         if store_id is not None:
-            search = "SELECT book_id FROM store where %s like %s AND store_id = %s;"
+            search = "SELECT book_id FROM store where %s like %s AND store_id = %s LIMIT %s OFFSET %s;"
         
         try:
             self.cursor = self.conn.cursor()
             if store_id is not None:
-                self.cursor.execute(search, (method, keywords, store_id))
+                self.cursor.execute(search, (method, keywords, store_id, PAGE_SIZE, offset))
             else:
-                self.cursor.execute(search, (method, keywords))
+                self.cursor.execute(search, (method, keywords, PAGE_SIZE, offset))
         except pymysql.Error as e:
             return 528, "{}".format(str(e))
         except BaseException as e:
