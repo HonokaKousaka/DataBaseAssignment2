@@ -71,11 +71,12 @@ class Buyer:
         r = requests.post(url, headers=headers, json=json)
         return r.status_code
 
-    def search_book(self, method: str, keywords: str, store_id: str = None) -> int:
+    def search_book(self, method: str, keywords: str, store_id: str = None, page_number: int = 1) -> int:
         json = {
             "store_id": store_id,
             "method": method,
-            "keywords": keywords
+            "keywords": keywords,
+            "page_number": page_number
         }
         url = urljoin(self.url_prefix, "search_book")
         headers = {"token": self.token}
