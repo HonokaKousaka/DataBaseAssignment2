@@ -1,7 +1,11 @@
+from datetime import datetime
+import time
 import logging
 import os
 import sqlite3 as sqlite
 import pymysql
+import schedule
+import threading
 
 class Store:
     database: str
@@ -62,6 +66,24 @@ class Store:
             )
 
             conn.commit()
+
+            def update_data():
+                cur.execute("SELECT * from new_order WHERE status = 0")
+                row = cur.fetchall()
+                for each in row:
+                    if (datetime.now() - each[3]).total_seconds() > 20:
+                        cur.execute("UPDATE new_order SET status = -1 WHERE order_id = %s;", (each[0], ))
+                conn.commit()
+
+            schedule.every(1).second.do(update_data)
+
+            def run_schedule():
+                while True:
+                    schedule.run_pending()
+                    time.sleep(1)
+
+            schedule_thread = threading.Thread(target=run_schedule)
+            schedule_thread.start()
         except pymysql.Error as e:
             logging.error(e)
             conn.rollback()
