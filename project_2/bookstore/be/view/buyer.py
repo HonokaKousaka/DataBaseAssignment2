@@ -64,8 +64,9 @@ def search_book():
     store_id = request.json.get("store_id")
     method = request.json.get("method")
     keywords = request.json.get("keywords")
+    page_number = request.json.get("page_number")
     b = Buyer()
-    code, message = b.search_book(keywords, method, store_id)
+    code, message = b.search_book(keywords, method, store_id, page_number)
     return jsonify({"message": message}), code
 
 @bp_buyer.route("/search_order", methods=["POST"])
